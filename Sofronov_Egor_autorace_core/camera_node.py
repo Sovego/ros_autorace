@@ -87,9 +87,7 @@ class Camera_node(Node):
                 y = int(center_y + 0.8 * center_y * np.sin(angle))
                 points.append((x, y))
             average_point = (int(np.mean([point[0] for point in points])), int(np.mean([point[1] for point in points])))
-            pixel_values = []
-            for point in points:
-                pixel_values.append(cv_image[point[1], point[0]])
+            pixel_values = [cv_image[point[1], point[0]] for point in points]
             average_pixel_value = np.mean(pixel_values, axis=0)
         return average_pixel_value
     def go_forward(self):
