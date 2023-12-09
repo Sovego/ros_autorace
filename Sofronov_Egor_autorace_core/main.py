@@ -174,21 +174,20 @@ class Follow_Trace_Node(Node):
         orientation_q = data.pose.pose.orientation
         orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
         (roll, pitch, yaw) = euler_from_quaternion(orientation_list)
-        
+
         # Преобразование радиан в градусы, если нужно
         self.yaw_degree = yaw * 180 / math.pi
 
-        #print(f"Угол поворота: {self.yaw_degree} градусов")
-        if (self.do_rotate==1):
-            if abs(self.start_angle-self.yaw_degree)>=88:
+        if abs(self.start_angle-self.yaw_degree)>=88:
+            if (self.do_rotate==1):
                 twist = Twist()
                 twist.angular.z = 0.0 # Остановить поворот
                 self._robot_cmd_vel_pub.publish(twist)
                 self.do_rotate=0
                 self.zmeika_state+=1
                 self.start_angle=-999999
-        if (self.do_forward==1 and (self.zmeika_state==1 or self.zmeika_state==5 )):
-            if abs(self.start_distance-self.total_distance)>=0.25:
+        if abs(self.start_distance-self.total_distance)>=0.25:
+            if self.do_forward == 1 and self.zmeika_state in [1, 5]:
                 twist = Twist()
                 twist.linear.x = 0.0 # Остановить поворот
                 self._robot_cmd_vel_pub.publish(twist)
@@ -280,69 +279,68 @@ class Follow_Trace_Node(Node):
 
     # Обратный вызов для обработки данных с камеры
     def camera_callback(self, msg: Image):
-        if (self.state==1):
-            emptyTwist = Twist()
+        if self.state != 1:
+            return
+        emptyTwist = Twist()
+        emptyTwist.linear.x = self._linear_speed
+
+        cvImg = self._cv_bridge.imgmsg_to_cv2(msg, desired_encoding=msg.encoding)
+        cvImg = cv2.cvtColor(cvImg, cv2.COLOR_RGB2BGR)
+
+        perspective = self.Perspective_warp(cvImg)
+        h, w, _ = perspective.shape
+        hLine=int(h*(3/4))
+        # Получаем координаты края желтой линии и белой
+        endYellow = self.yellow_line(perspective,hLine) #self._find_yellow_line(perspective,hLine) # 180
+        startWhite = self.white_line(perspective,hLine) #610 #self.white_line(perspective,hLine)
+
+
+
+        middle_btw_lines = (startWhite + endYellow) // 2
+
+        center_crds = (w // 2, hLine)
+        lines_center_crds = (middle_btw_lines, hLine)
+
+
+        if abs(center_crds[0] - lines_center_crds[0]) > OFFSET_BTW_CENTERS:
+            direction = center_crds[0] - lines_center_crds[0]
+            angle = math.atan2(direction,215)
+            angular_v = self.PID(angle)
+            adaptive_speed = abs(self._linear_speed * (1 - min(abs(angular_v) / self.angular_speed, 1)))
+            emptyTwist.linear.x = adaptive_speed
+                    #self.get_logger().info(f"Angle Speed: {angular_v} Linear: {adaptive_speed}")
+                    #self.get_logger().info("----------------------------")
+
+        else:
+
             emptyTwist.linear.x = self._linear_speed
+        emptyTwist.angular.z = 0.0 #angular_v
+        if DEBUG_LEVEL >= 1:
+            # # рисуем точки
+            # persective_drawed = cv2.rectangle(perspective, center_crds, center_crds, (0, 255, 0), 5)  # Центр изо
+            # persective_drawed = cv2.rectangle(persective_drawed, lines_center_crds, lines_center_crds, (0, 0, 255), 5)  # центр точки между линиями
+            # cv2.imshow("img", persective_drawed)
+            # cv2.waitKey(1)
 
-            cvImg = self._cv_bridge.imgmsg_to_cv2(msg, desired_encoding=msg.encoding)
-            cvImg = cv2.cvtColor(cvImg, cv2.COLOR_RGB2BGR)
+            # рисуем точки
+            persective_drawed = cv2.rectangle(perspective, center_crds, center_crds, (0, 255, 0), 10)  # Центр изо
+            persective_drawed = cv2.rectangle(persective_drawed, lines_center_crds, lines_center_crds, (0, 0, 255), 10)  # центр точки между линиями
 
-            perspective = self.Perspective_warp(cvImg)
-            h, w, _ = perspective.shape
-            hLine=int(h*(3/4))
-            # Получаем координаты края желтой линии и белой
-            endYellow = self.yellow_line(perspective,hLine) #self._find_yellow_line(perspective,hLine) # 180
-            startWhite = self.white_line(perspective,hLine) #610 #self.white_line(perspective,hLine)
-
-            
-
-            middle_btw_lines = (startWhite + endYellow) // 2
-
-            center_crds = (w // 2, hLine)
-            lines_center_crds = (middle_btw_lines, hLine)
-
-    
-            if abs(center_crds[0] - lines_center_crds[0]) > OFFSET_BTW_CENTERS:
-                direction = center_crds[0] - lines_center_crds[0] 
-                angle = math.atan2(direction,215)
-                angular_v = self.PID(angle)
-                emptyTwist.angular.z = 0.0 #angular_v
-                adaptive_speed = abs(self._linear_speed * (1 - min(abs(angular_v) / self.angular_speed, 1)))
-                emptyTwist.linear.x = adaptive_speed
-                #self.get_logger().info(f"Angle Speed: {angular_v} Linear: {adaptive_speed}")
-                #self.get_logger().info("----------------------------")
-                
-            else:
-
-                emptyTwist.linear.x = self._linear_speed
-                emptyTwist.angular.z = 0.0
-
-            if DEBUG_LEVEL >= 1:
-                # # рисуем точки
-                # persective_drawed = cv2.rectangle(perspective, center_crds, center_crds, (0, 255, 0), 5)  # Центр изо
-                # persective_drawed = cv2.rectangle(persective_drawed, lines_center_crds, lines_center_crds, (0, 0, 255), 5)  # центр точки между линиями
-                # cv2.imshow("img", persective_drawed)
-                # cv2.waitKey(1)
-
-                # рисуем точки
-                persective_drawed = cv2.rectangle(perspective, center_crds, center_crds, (0, 255, 0), 10)  # Центр изо
-                persective_drawed = cv2.rectangle(persective_drawed, lines_center_crds, lines_center_crds, (0, 0, 255), 10)  # центр точки между линиями
-
-                point = (10, 10)
-                persective_drawed = cv2.circle(persective_drawed, point, 10, (0, 255, 0), -1)
+            point = (10, 10)
+            persective_drawed = cv2.circle(persective_drawed, point, 10, (0, 255, 0), -1)
 
 
-                persective_drawed = cv2.rectangle(persective_drawed, lines_center_crds, lines_center_crds, (0, 0, 255), 10)  # центр точки между линиями
+            persective_drawed = cv2.rectangle(persective_drawed, lines_center_crds, lines_center_crds, (0, 0, 255), 10)  # центр точки между линиями
 
-                # Выделяем желтую линию красным цветом
-                persective_drawed = cv2.line(persective_drawed, (endYellow, hLine), (endYellow + 10, hLine), (0, 0, 255), 10)
+            # Выделяем желтую линию красным цветом
+            persective_drawed = cv2.line(persective_drawed, (endYellow, hLine), (endYellow + 10, hLine), (0, 0, 255), 10)
 
-                # Выделяем белую линию синим цветом
-                persective_drawed = cv2.line(persective_drawed, (startWhite, hLine), (startWhite + 10, hLine), (255, 0, 0), 10)
+            # Выделяем белую линию синим цветом
+            persective_drawed = cv2.line(persective_drawed, (startWhite, hLine), (startWhite + 10, hLine), (255, 0, 0), 10)
 
-                cv2.imshow("img", persective_drawed)
-                cv2.waitKey(1)
-            self._robot_cmd_vel_pub.publish(emptyTwist)
+            cv2.imshow("img", persective_drawed)
+            cv2.waitKey(1)
+        self._robot_cmd_vel_pub.publish(emptyTwist)
 def main():
     rclpy.init()
     FTN = Follow_Trace_Node()
