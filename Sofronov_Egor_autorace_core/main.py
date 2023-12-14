@@ -94,7 +94,9 @@ class Follow_Trace_Node(Node):
             3 - едем по желтой
             4 - змейка
             5 - парковка
+            5.5 - едем до парковки
             6 - пешеход
+            6.5 ждем пешехода
             7 - тоннель
             8 - перекресток
         '''
@@ -250,7 +252,7 @@ class Follow_Trace_Node(Node):
             self._robot_cmd_vel_pub.publish(twist)
             self._linear_speed=0.0
         else:
-            
+            pass
     def timer_callback(self):
         """
         timer_callback is a callback function that performs different actions based on the current state.
