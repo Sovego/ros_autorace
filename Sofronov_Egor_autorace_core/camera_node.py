@@ -16,6 +16,10 @@ import math
 import numpy as np
 from std_msgs.msg import String
 
+from roadsign_detection import SignDetector
+
+
+
 class Camera_node(Node):
 
     def __init__(self): # 0.2 linear 2.15 angular
@@ -26,6 +30,7 @@ class Camera_node(Node):
         self._robot_Ccamera_sub = self.create_subscription(Image, "/color/image", self.camera_callback, 3)
         self.state_pub = self.create_publisher(String,"/state",10)
         self.timer = self.create_timer(0.2, self.go_forward)
+        self.detect_timer = self.create_timer(0.033, self.detect_callback)
         self.depth_camera = self.create_subscription(Image,"/depth/image",self.depth_callback,10)
         self._cv_bridge = CvBridge()
         self.last_position = Point()
@@ -33,7 +38,11 @@ class Camera_node(Node):
         self.is_first_message = True
         self.sign_type = 1
         self.distance_to_obstacle = 99999 
-        
+        self.frame = None
+        self.d_frame = None
+        self.detector = SignDetector(path_to_signs_imgs="signs_images", debug_mode=False)
+
+
     def pose_callback(self, data):
         position = data.pose.pose.position
 
@@ -58,10 +67,17 @@ class Camera_node(Node):
 
         #print(f"Угол поворота: {yaw_degree} градусов")    
     def camera_callback(self,data):
-        pass
+        try:
+            cv_image = self._cv_bridge.imgmsg_to_cv2(data, desired_encoding='passthrough')
+            self.frame = cv_image
+        except CvBridgeError as e:
+            self.get_logger().info(f'Error converting image: {str(e)}')
+            return
+        
     def depth_callback(self, data):
         try:
             cv_image = self._cv_bridge.imgmsg_to_cv2(data, desired_encoding='passthrough')
+            self.d_frame = cv_image
         except CvBridgeError as e:
             self.get_logger().info(f'Error converting image: {str(e)}')
             return
@@ -89,17 +105,17 @@ class Camera_node(Node):
     
     
     def go_forward(self):
-        if self.sign_type==1 and self.distance_to_obstacle<1.0:
+        if self.sign_type != -1:
             msg = String()
-            msg.data = "4"
+            msg.data = str(self.sign_type)
             self.state_pub.publish(msg)
             self.sign_type=-1
-        elif self.sign_type==2 and self.distance_to_obstacle<0.5:
-            pass # Перекресток
-        elif self.sign_type==3:
-            pass # Парковка
-        elif self.sign_type==4:
-            pass # пешеход
+
+
+    def detect_callback(self):
+        detect_res = self.detector(self.frame,self.d_frame)
+        self.sign_type = detect_res[1]
+
 def main():
     rclpy.init()
     FTN = Camera_node()
