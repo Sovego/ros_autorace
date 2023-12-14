@@ -16,7 +16,7 @@ import math
 import numpy as np
 from std_msgs.msg import String
 
-from roadsign_detection import SignDetector
+from .roadsign_detection import SignDetector
 
 
 
@@ -113,7 +113,8 @@ class Camera_node(Node):
 
 
     def detect_callback(self):
-        detect_res = self.detector(self.frame,self.d_frame)
+        if self.frame is not None and self.d_frame is not None:
+            detect_res = self.detector(self.frame,self.d_frame)
         self.sign_type = detect_res[1]
 
 def main():
