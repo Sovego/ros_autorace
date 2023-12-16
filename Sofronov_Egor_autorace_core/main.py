@@ -16,7 +16,7 @@ import cv2
 import math
 import numpy as np
 from sensor_msgs.msg import LaserScan
-OFFSET_BTW_CENTERS = 3.5 # 4 5 
+OFFSET_BTW_CENTERS = 5 # 4 5 
 """
 Уровни дебага
 0: нет его
@@ -50,7 +50,7 @@ class Follow_Trace_Node(Node):
         None.
     """
 
-    def __init__(self, linear_speed = 0.0, angular_speed=1.0, linear_slow_speed=None):# 0.2 linear 2.15 angular
+    def __init__(self, linear_speed = 0.2, angular_speed=1.2, linear_slow_speed=None):# 0.2 linear 2.15 angular
         """
         __init__ is the constructor method of the Follow_Trace_Node class.
 
@@ -107,8 +107,8 @@ class Follow_Trace_Node(Node):
         if self._linear_slow_speed is None:
             self._linear_slow_speed = self._linear_speed / 5
 
-        self.yellow_prevs = deque(maxlen=10)
-        self.white_prevs  = deque(maxlen=10)
+        self.yellow_prevs = deque(maxlen=2)
+        self.white_prevs  = deque(maxlen=2)
         self.yellow_prevs.append(0)
         self.white_prevs.append(0)
         self.do_rotate=0
@@ -128,16 +128,17 @@ class Follow_Trace_Node(Node):
     def lidar_callback(self,msg):
         self.lidar_msg = msg
     def depth_callback(self,msg):
-        try:
-            # Convert ROS Image message to OpenCV image
-            depth_image = self._cv_bridge.imgmsg_to_cv2(msg, desired_encoding='passthrough')
-        except Exception as e:
-            self.get_logger().error(f'Error converting depth image: {str(e)}')
-            return
-        print(depth_image.shape)
-        # Process depth image as needed (e.g., display or save)
-        cv2.imshow('Depth Image', depth_image)
-        cv2.waitKey(1)  # Update display
+        pass
+        # try:
+        #     # Convert ROS Image message to OpenCV image
+        #     depth_image = self._cv_bridge.imgmsg_to_cv2(msg, desired_encoding='passthrough')
+        # except Exception as e:
+        #     self.get_logger().error(f'Error converting depth image: {str(e)}')
+        #     return
+        # print(depth_image.shape)
+        # # Process depth image as needed (e.g., display or save)
+        # cv2.imshow('Depth Image', depth_image)
+        # cv2.waitKey(1)  # Update display
     def turn_robot(self,publisher, angle):
         """
         turn_robot publishes a Twist message with a specified angular velocity to turn the robot.
@@ -250,7 +251,7 @@ class Follow_Trace_Node(Node):
             twist.linear.x = 0.0 # Остановить поворот
             twist.angular.z=0.0
             self._robot_cmd_vel_pub.publish(twist)
-            self._linear_speed=0.0
+            #self._linear_speed=0.0
         else:
             pass
     def timer_callback(self):
@@ -449,8 +450,8 @@ class Follow_Trace_Node(Node):
             None.
         """
         h, w, _ = perspectiveImg.shape
-        #perspectiveImg= perspectiveImg[:,w//2:, :]
-        #tmp = w//2
+        perspectiveImg= perspectiveImg[:,w//2:, :]
+        tmp = w//2
         white_mask = cv2.inRange(perspectiveImg, (250, 250, 250), (255, 255, 255))
 
         middle_row = white_mask[middle_h]
@@ -460,7 +461,7 @@ class Follow_Trace_Node(Node):
         except: 
             first_white = sum(self.white_prevs)//len(self.white_prevs)
             
-        return (first_white)
+        return (first_white+ tmp)
     
     # Расчет новой угловой скорости с использованием PID-регулятора
     def PID(self, target):
@@ -506,8 +507,8 @@ class Follow_Trace_Node(Node):
         Raises:
             None.
         """
-        if self.state != 1:
-            return
+        #if self.state != 1:
+        #    return
         emptyTwist = Twist()
         emptyTwist.linear.x = self._linear_speed
 
@@ -519,7 +520,7 @@ class Follow_Trace_Node(Node):
         hLine=int(h*(3/4))
         # Получаем координаты края желтой линии и белой
         endYellow = self.yellow_line(perspective,hLine) #self._find_yellow_line(perspective,hLine) # 180
-        startWhite = self.white_line(perspective,hLine) #610 #self.white_line(perspective,hLine)
+        startWhite = 610 #610 #self.white_line(perspective,hLine)
 
 
 
@@ -535,13 +536,12 @@ class Follow_Trace_Node(Node):
             angular_v = self.PID(angle)
             adaptive_speed = abs(self._linear_speed * (1 - min(abs(angular_v) / self.angular_speed, 1)))
             emptyTwist.linear.x = adaptive_speed
-                    #self.get_logger().info(f"Angle Speed: {angular_v} Linear: {adaptive_speed}")
-                    #self.get_logger().info("----------------------------")
-
+            emptyTwist.angular.z = angular_v
+            self.get_logger().info(f"Angle Speed: {angular_v} Linear: {adaptive_speed}")
+            self.get_logger().info("----------------------------")
         else:
-
             emptyTwist.linear.x = self._linear_speed
-        emptyTwist.angular.z = 0.0 #angular_v
+            emptyTwist.angular.z = 0.0 #angular_v
         if DEBUG_LEVEL >= 1:
             # # рисуем точки
             # persective_drawed = cv2.rectangle(perspective, center_crds, center_crds, (0, 255, 0), 5)  # Центр изо
