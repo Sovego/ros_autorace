@@ -1,3 +1,4 @@
+import os
 import time
 from typing import Literal
 from collections import deque
@@ -16,7 +17,7 @@ import cv2
 import math
 import numpy as np
 from std_msgs.msg import String
-
+import pkg_resources
 from .roadsign_detection import SignDetector
 from .mask_search import MaskSerach
 
@@ -41,7 +42,9 @@ class Camera_node(Node):
         self.distance_to_obstacle = 99999 
         self.frame = None
         self.d_frame = None
-        self.detector = SignDetector(path_to_signs_imgs="./signs_images", debug_mode=True)
+        path_to_signs_imgs = os.path.join(os.path.dirname(pkg_resources.resource_filename('bagodelnya_core',"1")),"..","..", '..', '..', 'share', 'bagodelnya_core', 'signs_images')
+        print(path_to_signs_imgs)
+        self.detector = SignDetector(path_to_signs_imgs=path_to_signs_imgs, debug_mode=True)
         self.on_mission = 0
         self.intersection_founded = False
         self.started = 0

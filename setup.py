@@ -1,7 +1,7 @@
 from setuptools import find_packages, setup
-import glob
+from glob import glob
 import os
-package_name = 'Sofronov_Egor_autorace_core'
+package_name = 'bagodelnya_core'
 
 setup(
     name=package_name,
@@ -16,14 +16,14 @@ setup(
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='pechenkanepnep',
-    maintainer_email='pechenkanepnep@todo.todo',
+    maintainer_email='egor.sofronov03@gmail.com',
     description='TODO: Package description',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'line = Sofronov_Egor_autorace_core.main:main',
-            'camera = Sofronov_Egor_autorace_core.camera_node:main',
+            'line_s = bagodelnya_core.main:main',
+            'camera_s = bagodelnya_core.camera_node:main',
         ],
     },
 )
