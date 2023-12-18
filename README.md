@@ -1,4 +1,4 @@
-# Ros autorace
+# ROS2 AutoRace package
 
 A __ROS2__ package for the AutoRace challenge, created in Python.
 
