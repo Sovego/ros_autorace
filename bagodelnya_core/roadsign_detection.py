@@ -173,7 +173,7 @@ class SignDetector:
                         #print("nothing")
                 else:  
                     #pass
-                    cv.putText(image, f"{list(self.__templ_masks.keys())[max_idx]}: {classification[metric][1]:.4%} ({metric})", (0, (idx+1)*14), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                    cv.putText(image, f"{list(self.__templ_masks.keys())[max_idx][-1]}: {classification[metric][1]:.4%} ({metric})", (0, (idx+1)*14), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
                     #print(classification[metric][0],classification[metric][1])
 
 
