@@ -5,7 +5,7 @@ nav_msgs==4.2.3
 numpy==1.22.0
 rclpy==3.3.11
 sensor_msgs==4.2.3
-setuptools==59.6.0
+setuptools==65.5.1
 std_msgs==4.2.3
 tf_transformations==1.0.0
 opencv-python==4.8.1.78
