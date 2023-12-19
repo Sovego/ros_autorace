@@ -63,7 +63,7 @@ class Camera_node(Node):
 
         # Initialize the sign detector
         path_to_signs_imgs = os.path.join(os.path.dirname(pkg_resources.resource_filename('bagodelnya_core',"1")),"..","..", '..', '..', 'share', 'bagodelnya_core', 'signs_images')
-        self.detector = SignDetector(path_to_signs_imgs=path_to_signs_imgs, debug_mode=True)
+        self.detector = SignDetector(path_to_signs_imgs=path_to_signs_imgs, debug_mode=False)
 
         # Initialize other instance variables
         self.on_mission = 0
