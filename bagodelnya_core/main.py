@@ -69,6 +69,7 @@ class Line(Node):
         self.misson_pub = self.create_publisher(String, "/mission", 10)
         self.camera_sub = self.create_subscription(String,"/state",self.state_callback,10)
         self.lidar_sub = self.create_subscription(LaserScan, '/scan', self.lidar_callback, 1)
+        self.finish_pub=self.create_publisher(String, "/robot_finish", 10)
         # Initialize CvBridge object to convert ROS images to OpenCV
         self._cv_bridge = CvBridge()
         self.timer = self.create_timer(0.1,self.timer_callback)
@@ -602,7 +603,7 @@ class Line(Node):
         distance = math.sqrt(delta_x**2 + delta_y**2)
         self.total_distance += distance
         self.last_position = position
-
+        #self.get_logger().info(f"Distance: {self.total_distance}")
         # Extract the orientation from the pose data and convert it to Euler angles
         orientation_q = data.pose.pose.orientation
         orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
@@ -708,7 +709,15 @@ class Line(Node):
             self.on_mission=0
             self.mission_upd("0")
         
-
+        if self.total_distance>=17.9:
+            self.state=8
+            twist = Twist()
+            twist.linear.x = 0.0 
+            twist.angular.z = 0.0 # Stop rotation
+            self._robot_cmd_vel_pub.publish(twist)
+            msg = String()
+            msg.data="BAGodelnya"
+            self.finish_pub.publish(msg)
     def Perspective_warp(self, cvImg):
         """
         Perspective_warp applies a perspective transformation to the input image.
